@@ -6,17 +6,23 @@ export const metricsMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-  const start = Date.now();
+  const start = process.hrtime();
 
   res.on("finish", () => {
-    const duration = (Date.now() - start) / 1000;
+    const diff = process.hrtime(start);
+    const duration = diff[0] + diff[1] / 1e9;
+
+    const route =
+      req.route?.path ||
+      req.baseUrl ||
+      "unknown";
 
     httpRequestDuration
-      .labels(req.method, req.route?.path || req.path, res.statusCode.toString())
+      .labels(req.method, route, res.statusCode.toString())
       .observe(duration);
 
     requestCounter
-      .labels(req.method, req.route?.path || req.path, res.statusCode.toString())
+      .labels(req.method, route, res.statusCode.toString())
       .inc();
   });
 

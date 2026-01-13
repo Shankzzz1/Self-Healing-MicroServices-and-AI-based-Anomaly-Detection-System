@@ -2,7 +2,8 @@ import express from "express";
 import cors from "cors";
 import { setupRoutes } from "./routes";
 import { metricsMiddleware } from "./middleware/metricsMiddleware";
-import metricsClient from "./metrics";
+import { register } from "./metrics";
+
 
 const app = express();
 
@@ -11,8 +12,8 @@ app.use(express.json());
 app.use(metricsMiddleware);
 
 app.get("/metrics", async (_req, res) => {
-  res.set("Content-Type", metricsClient.register.contentType);
-  res.end(await metricsClient.register.metrics());
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
 });
 setupRoutes(app);
 

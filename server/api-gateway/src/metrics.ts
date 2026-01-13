@@ -1,11 +1,8 @@
 import client from "prom-client";
 
-const register = client.register;
+const register = new client.Registry();
 
-// ❌ REMOVE duplicate metrics
-register.clear();
-
-// ✅ Run default metrics ONCE
+// ✅ collect default metrics ONCE, bound to this registry
 client.collectDefaultMetrics({ register });
 
 export const httpRequestDuration = new client.Histogram({
@@ -22,4 +19,4 @@ export const requestCounter = new client.Counter({
   registers: [register],
 });
 
-export default client;
+export { register };
