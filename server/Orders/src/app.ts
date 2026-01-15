@@ -33,9 +33,13 @@ app.get("/metrics", async (_req, res) => {
 });
 
 /* Fault */
+// app.get("/fault", (_req, res) => {
+//   if (Math.random() < 0.2) process.exit(1);
+//   res.send("Order Service stable ✅");
+// });
+
 app.get("/fault", (_req, res) => {
-  if (Math.random() < 0.2) process.exit(1);
-  res.send("Order Service stable ✅");
+  process.exit(1);
 });
 
 export default app;
