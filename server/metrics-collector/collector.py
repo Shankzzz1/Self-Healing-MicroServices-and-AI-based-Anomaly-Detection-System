@@ -35,4 +35,4 @@ while True:
     write_header = not os.path.exists(CSV_PATH)
     df.to_csv(CSV_PATH, mode="a", header=write_header, index=False)
 
-    time.sleep(30)
+    time.sleep(1)
