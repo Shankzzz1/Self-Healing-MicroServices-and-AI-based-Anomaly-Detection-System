@@ -33,7 +33,7 @@ services:
       retries: 3
 
   orders:
-    build: ./orders
+    build: ./Orders
     container_name: orders
     ports:
       - "3002:3002"
@@ -48,7 +48,7 @@ services:
       retries: 3
 
   payments:
-    build: ./payment
+    build: ./Payments
     container_name: payments
     ports:
       - "3003:3003"

@@ -1,5 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: orders
 
@@ -20,8 +21,11 @@ spec:
         - name: orders
 
           image: orders:v1
-
           imagePullPolicy: Never
+
+          env:
+            - name: K8S_DEMO
+              value: "true"
 
           ports:
             - containerPort: 3002
@@ -31,4 +35,4 @@ spec:
               cpu: "100m"
 
             limits:
-              cpu: "500m" 
+              cpu: "500m"
