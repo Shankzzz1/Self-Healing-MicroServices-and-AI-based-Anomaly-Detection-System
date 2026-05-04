@@ -247,9 +247,6 @@ curl http://localhost:3000/orders/fault
 5.  **Observe Auto-Scaling:**
     Watch as the number of `orders` pods increases from 1 to handle the load, and the CPU utilization is reported by the HPA. The pod count will scale down once the load test is complete.
 
-## 🎯 One-Line Interview Explanation
-"I built a self-healing microservices platform where live Prometheus metrics are analyzed using an Isolation Forest ML model. The system automatically chooses and executes the least disruptive recovery action, such as a container restart or Kubernetes-based horizontal scaling, in response to detected anomalies."
-
 ## 🚀 Future Enhancements
 *   Service-specific ML models for more granular anomaly detection.
 *   Automated Root Cause Analysis (RCA).
