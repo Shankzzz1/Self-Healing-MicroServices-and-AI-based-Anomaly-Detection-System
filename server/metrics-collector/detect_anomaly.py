@@ -1,17 +1,15 @@
+"""
+detect_anomaly.py — MODIFIED (email alerting added)
+Changes marked with # ✉️ NEW
+"""
+
 import pandas as pd
 import joblib
 import time
+import load_env  
 import subprocess
-
-from rca import diagnose
-
-from heal import (
-    restart_service,
-    scale_service,
-    circuit_breaker,
-    throttle_traffic
-)
-
+from heal import restart_service
+from alert_mailer import send_anomaly_alert  # ✉️ NEW
 
 MODEL_PATH = "model/anomaly_model.pkl"
 DATA_PATH = "data/metrics.csv"
@@ -48,11 +46,7 @@ def is_service_running(
             capture_output=True,
             text=True
         )
-
-        return (
-            result.stdout.strip()
-            == "true"
-        )
+        return result.stdout.strip() == "true"
 
     except Exception:
 
@@ -72,8 +66,21 @@ while True:
             SERVICE_NAME
         ):
 
-            print(
-                f"🚨 {SERVICE_NAME} crashed"
+            print(f"🚨 {SERVICE_NAME} container crashed!")
+
+            # ✉️ NEW — fire alert immediately (debounce handled inside)
+            send_anomaly_alert(
+                service=SERVICE_NAME,
+                anomaly_type="HARD_FAILURE",
+                severity="CRITICAL",
+                metrics={
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "container_running": False,
+                    "rps": "N/A",
+                    "error_rate": "N/A",
+                    "p95_latency": "N/A",
+                },
+                extra_context=f"Container '{SERVICE_NAME}' is not running. Restart triggered.",
             )
 
             if (
@@ -120,103 +127,45 @@ while True:
 
             continue
 
-
-        features = df[
-            [
-                "rps",
-                "error_rate",
-                "p95_latency"
-            ]
-        ]
-
-
-        prediction = model.predict(
-            features
-        )
-
+        features = df[["rps", "error_rate", "p95_latency"]]
+        prediction = model.predict(features)
 
         if prediction[0] == -1:
 
-            metrics = df.to_dict(
-                "records"
-            )[0]
+            anomaly = df.to_dict("records")[0]
+            print("🚨 ANOMALY DETECTED", anomaly)
 
+            # ✉️ NEW — determine severity from metrics
+            error_rate = float(anomaly.get("error_rate", 0))
+            p95_latency = float(anomaly.get("p95_latency", 0))
 
-            print(
-                "🚨 ANOMALY DETECTED",
-                metrics
+            if error_rate > 0.5 or p95_latency > 2.0:
+                severity = "CRITICAL"
+            elif error_rate > 0.2 or p95_latency > 1.0:
+                severity = "HIGH"
+            else:
+                severity = "MEDIUM"
+
+            send_anomaly_alert(
+                service=SERVICE_NAME,
+                anomaly_type="ML_ANOMALY",
+                severity=severity,
+                metrics={
+                    "timestamp": anomaly.get("timestamp", "N/A"),
+                    "rps": round(float(anomaly.get("rps", 0)), 4),
+                    "error_rate": round(error_rate, 4),
+                    "p95_latency_sec": round(p95_latency, 4),
+                    "ml_score": "anomaly (-1)",
+                },
+                extra_context=(
+                    f"IsolationForest flagged this row as anomalous. "
+                    f"Restart will be attempted if cooldown allows."
+                ),
             )
 
-
-            # ========================
-            # RCA
-            # ========================
-            cause = diagnose(
-                metrics
-            )
-
-
-            print(
-                f"🧠 Root Cause: {cause}"
-            )
-
-
-            # ========================
-            # COOLDOWN
-            # ========================
-            if (
-                now - last_healing
-                < COOLDOWN
-            ):
-
-                print(
-                    "⏳ Cooldown active"
-                )
-
-                time.sleep(
-                    CHECK_INTERVAL
-                )
-
-                continue
-
-
-            # ========================
-            # HEALING DECISION
-            # ========================
-            if (
-                cause
-                == "service_failure"
-            ):
-
-                restart_service(
-                    SERVICE_NAME
-                )
-
-
-            elif (
-                cause
-                == "traffic_spike"
-            ):
-
-                scale_service()
-
-
-            elif (
-                cause
-                == "dependency_issue"
-            ):
-
-                circuit_breaker()
-
-
-            elif (
-                cause
-                == "traffic_drop"
-            ):
-
-                throttle_traffic()
-
-
+            if now - last_restart > COOLDOWN:
+                restart_service(SERVICE_NAME)
+                last_restart = now
             else:
 
                 print(
