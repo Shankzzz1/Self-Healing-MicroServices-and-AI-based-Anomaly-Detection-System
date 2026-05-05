@@ -48,7 +48,7 @@ services:
       retries: 3
 
   payments:
-    build: ./Payments
+    build: ./Payment
     container_name: payments
     ports:
       - "3003:3003"
